@@ -414,65 +414,64 @@ src="https://www.facebook.com/tr?id=2254078611729776&ev=PageView&noscript=1"
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('order_form_custom');
   const successAlert = document.getElementById('success-alert');
+  if (!form) return;
+
+  // URL "дякую" беремо з action форми (єдине джерело правди)
+  const THANK_URL = form.getAttribute('action') || './Новорічний%20Санта_files/thank_you_page.html';
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
 
-    // Получаем данные из формы
-    const name = form.querySelector('input[name="name"]').value.trim();
-    const phone = form.querySelector('input[name="phone"]').value.trim();
+    const name  = form.querySelector('input[name="name"]')?.value.trim()  || '';
+    const phone = form.querySelector('input[name="phone"]')?.value.trim() || '';
+    if (!name || !phone) { alert('Заповніть ім’я та телефон.'); return; }
 
-    // Telegram API данные
-    const token = '7492982602:AAGci6YXKW64JM6fdm6ud_55hYX7sAJl-PI'; // ваш бот
-    const chatId = -4223623903; // ваш Chat ID
+    // Telegram API
+    const token  = '7492982602:AAGci6YXKW64JM6fdm6ud_55hYX7sAJl-PI';
+    const chatId = -4223623903;
 
-    // Сообщение, которое придет в Telegram
-    const message = `
-🧾 *Нове замовлення (Новорічний Санта)*  
-👤 Ім’я: ${name}  
-📞 Телефон: ${phone}  
-🎁 Товар: Новорічний Санта
-`;
+    // Екранування під MarkdownV2
+    const escapeMd = s => String(s).replace(/[_*[\]()~`>#+\-=|{}.!\\]/g,'\\$&');
+    const message =
+`🧾 *Нове замовлення \\(Новорічний Санта\\)*
+👤 Ім’я: ${escapeMd(name)}
+📞 Телефон: ${escapeMd(phone)}
+🎁 Товар: Новорічний Санта`;
 
-    // Отправка через Telegram API
-    fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    // Відправляємо у Telegram, але НЕ блокуємо редирект
+    const telegram = fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: 'Markdown',
-      }),
+      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'MarkdownV2' })
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.ok) {
-        console.log('✅ Заявка відправлена в Telegram');
+    .then(r => r.json())
+    .then(d => {
+      if (d?.ok && successAlert) {
+        successAlert.textContent = 'Ваше замовлення успішно відправлено!';
         successAlert.style.display = 'block';
-        setTimeout(() => {
-          window.location.href = './tigfox_files/thank_you_page.html';
-        }, 1000);
-      } else {
-        alert('Помилка при надсиланні замовлення!');
       }
     })
-    .catch(error => {
-      console.error('Error:', error);
-      alert('Сталася помилка при надсиланні заявки.');
+    .catch(() => { /* ігноруємо, все одно перейдемо на "дякую" */ });
+
+    // Гарантований перехід на "дякую"
+    const fallback = setTimeout(() => { window.location.href = THANK_URL; }, 1200);
+    Promise.resolve(telegram).finally(() => {
+      clearTimeout(fallback);
+      setTimeout(() => { window.location.href = THANK_URL; }, 300);
     });
   });
 });
 </script>
 
-<form id="order_form_custom" class="order_form" action="https://tigfox.goodsshop.store/tigfox_files/thank_you_page.html" method="POST" name="order-form">
-   <input class="field" type="text" name="name" placeholder="Ваше ім&#39;я" required="">
-   <input class="field" type="tel" name="phone" minlength="10" maxlength="15" placeholder="Ваш телефон" required="">
-   
-  
-   
-   <button class="button">Замовити зі знижкою</button>
-   <div class="products_count">Залишилось: <span>5 фігурок по акції</span></div>
+<form id="order_form_custom" class="order_form"
+      action="./Новорічний%20Санта_files/thank_you_page.html"
+      method="POST" name="order-form">
+  <input class="field" type="text" name="name" placeholder="Ваше ім&#39;я" required>
+  <input class="field" type="tel" name="phone" minlength="10" maxlength="15" placeholder="Ваш телефон" required>
+  <button class="button">Замовити зі знижкою</button>
+  <div class="products_count">Залишилось: <span>5 фігурок по акції</span></div>
 </form>
+
 
 
 
