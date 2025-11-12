@@ -412,55 +412,58 @@ src="https://www.facebook.com/tr?id=2254078611729776&ev=PageView&noscript=1"
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('order_form_custom');
   const successAlert = document.getElementById('success-alert');
+  if (!form) return;
+
+  /* === 1. Плавна прокрутка до форми === */
+  const buttons = document.querySelectorAll('a[href="#order_form_custom"], .button[href="#order_form_custom"]');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const header = document.querySelector('header');
+      const headerH = header ? header.offsetHeight : 0;
+      const y = form.getBoundingClientRect().top + window.scrollY - headerH;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    });
+  });
+
+  /* === 2. Відправка у Telegram і перехід на сторінку "дякую" === */
+  const THANK_URL = encodeURI('./Новорічний Санта_files/thank_you_page.html'); // ← твій реальний шлях
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
 
-    // Получаем данные из формы
-    const name = form.querySelector('input[name="name"]').value.trim();
+    const name  = form.querySelector('input[name="name"]').value.trim();
     const phone = form.querySelector('input[name="phone"]').value.trim();
+    if (!name || !phone) {
+      alert('Заповніть ім’я та телефон.');
+      return;
+    }
 
-    // Telegram API данные
-    const token = '7492982602:AAGci6YXKW64JM6fdm6ud_55hYX7sAJl-PI'; // ваш бот
-    const chatId = -4223623903; // ваш Chat ID
+    const token  = '7492982602:AAGci6YXKW64JM6fdm6ud_55hYX7sAJl-PI';
+    const chatId = -4223623903;
 
-    // Сообщение, которое придет в Telegram
-    const message = `
-🧾 *Нове замовлення (Новорічний Санта)*  
-👤 Ім’я: ${name}  
-📞 Телефон: ${phone}  
-🎁 Товар: Новорічний Санта
-`;
+    const escapeMd = s => String(s).replace(/[_*[\]()~`>#+\-=|{}.!\\]/g,'\\$&');
+    const message =
+`🧾 *Нове замовлення \\(Новорічний Санта\\)*
+👤 Ім’я: ${escapeMd(name)}
+📞 Телефон: ${escapeMd(phone)}
+🎁 Товар: Новорічний Санта`;
 
-    // Отправка через Telegram API
     fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: 'Markdown',
-      }),
+      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'MarkdownV2' })
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.ok) {
-        console.log('✅ Заявка відправлена в Telegram');
-        successAlert.style.display = 'block';
-        setTimeout(() => {
-          window.location.href = './Новорічний%20Санта_files/thank_you_page.html';
-        }, 1000);
-      } else {
-        alert('Помилка при надсиланні замовлення!');
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      alert('Сталася помилка при надсиланні заявки.');
+    .catch(() => {})
+    .finally(() => {
+      // Гарантований перехід навіть якщо Telegram не відповість
+      window.location.href = THANK_URL;
     });
   });
 });
 </script>
+
 
 <form id="order_form_custom" class="order_form" action="https://tigfox.goodsshop.store/tigfox_files/thank_you_page.html" method="POST" name="order-form">
    <input class="field" type="text" name="name" placeholder="Ваше ім&#39;я" required="">
