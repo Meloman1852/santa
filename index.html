@@ -411,12 +411,10 @@ src="https://www.facebook.com/tr?id=2254078611729776&ev=PageView&noscript=1"
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('order_form_custom');
-  const successAlert = document.getElementById('success-alert');
   if (!form) return;
 
-  /* === 1. Плавна прокрутка до форми === */
-  const buttons = document.querySelectorAll('a[href="#order_form_custom"], .button[href="#order_form_custom"]');
-  buttons.forEach(btn => {
+  /* === 1) Плавний скрол до форми для всіх лінків #order_form_custom === */
+  document.querySelectorAll('a[href="#order_form_custom"], .button[href="#order_form_custom"]').forEach(btn => {
     btn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -427,20 +425,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  /* === 2. Відправка у Telegram і перехід на сторінку "дякую" === */
-  const THANK_URL = const THANK_URL = './%D0%9D%D0%BE%D0%B2%D0%BE%D1%80%D1%96%D1%87%D0%BD%D0%B8%D0%B9%20%D0%A1%D0%B0%D0%BD%D1%82%D0%B0_files/thank_you_page.html';
- // ← твій реальний шлях
-
-  form.addEventListener('submit', function (e) {
+  /* === 2) Відправка в Telegram і розумний перехід на "дякую" === */
+  form.addEventListener('submit', async function (e) {
     e.preventDefault();
 
-    const name  = form.querySelector('input[name="name"]').value.trim();
-    const phone = form.querySelector('input[name="phone"]').value.trim();
-    if (!name || !phone) {
-      alert('Заповніть ім’я та телефон.');
-      return;
-    }
+    const name  = form.querySelector('input[name="name"]')?.value.trim()  || '';
+    const phone = form.querySelector('input[name="phone"]')?.value.trim() || '';
+    if (!name || !phone) { alert('Заповніть ім’я та телефон.'); return; }
 
+    // ⛔️ Токен краще замінити/сховати на сервері
     const token  = '7492982602:AAGci6YXKW64JM6fdm6ud_55hYX7sAJl-PI';
     const chatId = -4223623903;
 
@@ -451,19 +444,57 @@ document.addEventListener('DOMContentLoaded', function () {
 📞 Телефон: ${escapeMd(phone)}
 🎁 Товар: Новорічний Санта`;
 
-    fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'MarkdownV2' })
-    })
-    .catch(() => {})
-    .finally(() => {
-      // Гарантований перехід навіть якщо Telegram не відповість
-      window.location.href = THANK_URL;
-    });
+    // Відправляємо, але НЕ блокуємо перехід
+    try {
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'MarkdownV2' })
+      });
+    } catch (_) {}
+
+    // === Пошук реального шляху до "дякую" ===
+    const actionAttr = form.getAttribute('action') || '';
+    const encodedCyrFolder = './%D0%9D%D0%BE%D0%B2%D0%BE%D1%80%D1%96%D1%87%D0%BD%D0%B8%D0%B9%20%D0%A1%D0%B0%D0%BD%D1%82%D0%B0_files/thank_you_page.html';
+    const latinFolder     = './novorichny_santa_files/thank_you_page.html';
+    const sameFolder      = './thank_you_page.html';
+
+    // Якщо на GitHub Pages під-репо (типу /user/repo/...), абсолютний відносно поточної сторінки:
+    const absFromHere = p => new URL(p, window.location.href).href;
+
+    const candidates = [
+      actionAttr ? absFromHere(actionAttr) : null,
+      absFromHere(encodedCyrFolder),
+      absFromHere(latinFolder),
+      absFromHere(sameFolder),
+      // дублікати без abs — на випадок already-absolute у action
+      actionAttr || null
+    ].filter(Boolean);
+
+    // Перевіряємо послідовно й переходимо на перший доступний
+    let target = null;
+    const tried = [];
+    for (const url of candidates) {
+      tried.push(url);
+      try {
+        const r = await fetch(url, { method: 'GET', cache: 'no-store' });
+        if (r.ok) { target = url; break; }
+      } catch (_) {
+        // ігноруємо, пробуємо наступний
+      }
+    }
+
+    if (!target) {
+      console.warn('Не знайшов thank_you_page.html. Перевірено URL:', tried);
+      alert('Не знайдено сторінку "дякую". Перевір шляхи в консолі (F12).');
+      return;
+    }
+
+    window.location.assign(target);
   });
 });
 </script>
+
 
 
 <form id="order_form_custom" class="order_form" action="https://tigfox.goodsshop.store/tigfox_files/thank_you_page.html" method="POST" name="order-form">
